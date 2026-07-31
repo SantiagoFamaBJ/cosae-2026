@@ -27,10 +27,10 @@ export const BRANDS = ['Densell', 'Easydent', 'Coltene', 'GDK', 'Otros'] as cons
 export const CATEGORY_ORDER = [
   'Limas mecanizadas',
   'Equipamiento',
+  'Línea Coltene',
   'Línea Densell',
   'Trabajá con mayor precisión',
   'Línea Coxo',
-  'Línea Coltene',
   'Obturación',
   'Instrumentación aux.',
   'Ensanchadores',
