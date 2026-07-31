@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, Product, BRANDS } from '@/lib/supabase'
+import { supabase, Product, BRANDS, CATEGORY_ORDER } from '@/lib/supabase'
 
 const ADMIN_PASSWORD = 'CosaeDM2026'
 
@@ -137,7 +137,7 @@ export default function AdminPage() {
                 </label>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-gray-800 truncate">{p.name}</p>
-                  <p className="text-[11px] text-gray-400">{p.brand} · ${p.price_normal?.toLocaleString('es-AR')}{p.has_promo ? ` · ${p.promo_text || (p.promo_pct ? Math.round(p.promo_pct*100)+'% off' : '')}` : ''}</p>
+                  <p className="text-[11px] text-gray-400">{p.category || 'Sin categoría'} · {p.brand} · ${p.price_normal?.toLocaleString('es-AR')}{p.has_promo ? ` · ${p.promo_text || (p.promo_pct ? Math.round(p.promo_pct*100)+'% off' : '')}` : ''}</p>
                 </div>
                 <button
                   onClick={() => toggleActive(p)}
@@ -172,6 +172,13 @@ export default function AdminPage() {
               <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" value={editing.brand}
                 onChange={e => setEditing({ ...editing, brand: e.target.value })}>
                 {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Categoría (sección de la landing)</label>
+              <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" value={editing.category ?? ''}
+                onChange={e => setEditing({ ...editing, category: e.target.value || null })}>
+                {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>

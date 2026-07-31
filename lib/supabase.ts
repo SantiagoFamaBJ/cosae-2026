@@ -9,6 +9,7 @@ export type Product = {
   id: string
   name: string
   brand: string
+  category: string | null
   image_url: string | null
   price_normal: number | null
   has_promo: boolean
@@ -21,5 +22,19 @@ export type Product = {
 }
 
 export const BRANDS = ['Densell', 'Easydent', 'Coltene', 'GDK', 'Otros'] as const
+
+// Orden de las secciones en la landing, igual al folleto impreso
+export const CATEGORY_ORDER = [
+  'Limas mecanizadas',
+  'Equipamiento',
+  'Línea Densell',
+  'Trabajá con mayor precisión',
+  'Línea Coxo',
+  'Línea Coltene',
+  'Obturación',
+  'Instrumentación aux.',
+  'Ensanchadores',
+  'Otros',
+]
 
 export const WHATSAPP_NUMBER = '5491164294000'

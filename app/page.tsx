@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
-import { supabase, Product, WHATSAPP_NUMBER } from '@/lib/supabase'
+import { supabase, Product, WHATSAPP_NUMBER, CATEGORY_ORDER } from '@/lib/supabase'
 
 type CartItem = { product: Product; qty: number }
 
@@ -31,8 +31,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
         )}
       </div>
       <div className="p-3 flex flex-col flex-1">
-        <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">{product.brand}</p>
-        <h3 className="text-xs font-medium text-gray-800 leading-snug line-clamp-3 min-h-[2.5rem] mt-0.5">
+        <h3 className="text-xs font-medium text-gray-800 leading-snug line-clamp-3 min-h-[2.5rem]">
           {product.name}
         </h3>
 
@@ -61,10 +60,24 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
   )
 }
 
+// ─── Section ──────────────────────────────────────────────────────────────────
+function CategorySection({ title, products, onAdd }: { title: string; products: Product[]; onAdd: (p: Product) => void }) {
+  if (products.length === 0) return null
+  return (
+    <section className="mb-8">
+      <div className="bg-[#f15922] rounded-xl px-4 py-2.5 mb-3">
+        <h2 className="font-sans text-white font-bold text-sm sm:text-base uppercase tracking-wide">{title}</h2>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {products.map(p => <ProductCard key={p.id} product={p} onAdd={onAdd} />)}
+      </div>
+    </section>
+  )
+}
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [brand, setBrand] = useState<string>('Todas')
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
@@ -83,18 +96,22 @@ export default function Home() {
     setLoading(false)
   }
 
-  const brands = useMemo(() => {
-    const set = new Set(products.map(p => p.brand))
-    return ['Todas', ...Array.from(set).sort()]
-  }, [products])
-
   const filtered = useMemo(() => {
-    return products.filter(p => {
-      const matchBrand = brand === 'Todas' || p.brand === brand
-      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
-      return matchBrand && matchSearch
+    if (!search) return products
+    return products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+  }, [products, search])
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Product[]>()
+    filtered.forEach(p => {
+      const cat = p.category || 'Otros'
+      if (!map.has(cat)) map.set(cat, [])
+      map.get(cat)!.push(p)
     })
-  }, [products, brand, search])
+    return CATEGORY_ORDER
+      .filter(cat => map.has(cat))
+      .map(cat => ({ category: cat, items: map.get(cat)! }))
+  }, [filtered])
 
   function addToCart(product: Product) {
     setCart(prev => {
@@ -132,10 +149,17 @@ export default function Home() {
       {/* Header */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
         <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <Image src="/logos/dental-medrano.png" alt="Dental Medrano" width={140} height={36} className="h-9 w-auto object-contain" />
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+            <Image src="/logos/dental-medrano.png" alt="Dental Medrano" width={140} height={36} className="h-8 sm:h-9 w-auto object-contain" />
+            <div className="hidden sm:flex items-center gap-5">
+              <Image src="/logos/cosae.png" alt="COSAE" width={90} height={40} className="h-8 w-auto object-contain" />
+              <Image src="/logos/sae.png" alt="SAE" width={70} height={40} className="h-7 w-auto object-contain" />
+              <Image src="/logos/aoa.png" alt="Asociación Odontológica Argentina" width={90} height={40} className="h-8 w-auto object-contain" />
+            </div>
+          </div>
           <button
             onClick={() => setCartOpen(true)}
-            className="relative bg-[#f15922] text-white text-sm font-semibold px-4 py-2 rounded-full flex items-center gap-2"
+            className="relative bg-[#f15922] text-white text-sm font-semibold px-4 py-2 rounded-full flex items-center gap-2 shrink-0"
           >
             🛒 Pedido
             {cartCount > 0 && (
@@ -144,6 +168,12 @@ export default function Home() {
               </span>
             )}
           </button>
+        </div>
+        {/* Logos institucionales en mobile, debajo */}
+        <div className="sm:hidden flex items-center justify-center gap-5 px-4 pb-3">
+          <Image src="/logos/cosae.png" alt="COSAE" width={80} height={36} className="h-7 w-auto object-contain" />
+          <Image src="/logos/sae.png" alt="SAE" width={60} height={36} className="h-6 w-auto object-contain" />
+          <Image src="/logos/aoa.png" alt="Asociación Odontológica Argentina" width={80} height={36} className="h-7 w-auto object-contain" />
         </div>
       </header>
 
@@ -156,8 +186,8 @@ export default function Home() {
         <p className="mt-3 text-xs text-white/70">5 al 8 de agosto de 2026</p>
       </section>
 
-      {/* Filters */}
-      <div className="max-w-screen-xl mx-auto px-4 py-4 space-y-3">
+      {/* Search */}
+      <div className="max-w-screen-xl mx-auto px-4 py-4">
         <input
           type="text"
           placeholder="Buscar producto..."
@@ -165,35 +195,20 @@ export default function Home() {
           onChange={e => setSearch(e.target.value)}
           className="w-full border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f15922]/30"
         />
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-          {brands.map(b => (
-            <button
-              key={b}
-              onClick={() => setBrand(b)}
-              className={`whitespace-nowrap text-xs font-semibold px-4 py-2 rounded-full border transition-colors ${
-                brand === b
-                  ? 'bg-[#f15922] text-white border-[#f15922]'
-                  : 'bg-white text-gray-600 border-gray-200'
-              }`}
-            >
-              {b}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* Grid */}
+      {/* Grouped sections */}
       <main className="max-w-screen-xl mx-auto px-4 pb-24">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-[#f15922] border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : grouped.length === 0 ? (
           <p className="text-center py-20 text-gray-400 text-sm">No se encontraron productos</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {filtered.map(p => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}
-          </div>
+          grouped.map(g => (
+            <CategorySection key={g.category} title={g.category} products={g.items} onAdd={addToCart} />
+          ))
         )}
       </main>
 
