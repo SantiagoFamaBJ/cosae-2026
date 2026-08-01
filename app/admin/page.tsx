@@ -47,7 +47,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
-  const [catOrder, setCatOrder] = useState<string[]>(DEFAULT_CATEGORY_ORDER)
+  const [catItems, setCatItems] = useState<{ original: string; label: string }[]>(
+    DEFAULT_CATEGORY_ORDER.map(c => ({ original: c, label: c }))
+  )
   const [catSaving, setCatSaving] = useState(false)
 
   useEffect(() => {
@@ -58,12 +60,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (authed) {
       fetchProducts()
-      fetchCategoryOrder().then(setCatOrder)
+      loadCategoryOrder()
     }
   }, [authed])
 
+  async function loadCategoryOrder() {
+    const order = await fetchCategoryOrder()
+    setCatItems(order.map(c => ({ original: c, label: c })))
+  }
+
   function moveCategory(index: number, dir: -1 | 1) {
-    setCatOrder(prev => {
+    setCatItems(prev => {
       const next = [...prev]
       const target = index + dir
       if (target < 0 || target >= next.length) return prev
@@ -72,9 +79,21 @@ export default function AdminPage() {
     })
   }
 
+  function renameCategory(index: number, newLabel: string) {
+    setCatItems(prev => prev.map((it, i) => i === index ? { ...it, label: newLabel } : it))
+  }
+
   async function persistCategoryOrder() {
     setCatSaving(true)
-    await saveCategoryOrder(catOrder)
+    // Por cada categoría renombrada, actualizar todos los productos que la usan
+    for (const item of catItems) {
+      if (item.label.trim() && item.label !== item.original) {
+        await supabase.from('cosae_products').update({ category: item.label }).eq('category', item.original)
+      }
+    }
+    await saveCategoryOrder(catItems.map(i => i.label))
+    await loadCategoryOrder()
+    await fetchProducts()
     setCatSaving(false)
   }
 
@@ -127,21 +146,26 @@ export default function AdminPage() {
 
       <div className="max-w-screen-xl mx-auto px-4 py-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-          <h2 className="font-sans font-bold text-gray-800 text-sm mb-3">Orden de los grupos en la landing</h2>
+          <h2 className="font-sans font-bold text-gray-800 text-sm mb-1">Grupos de la landing</h2>
+          <p className="text-[11px] text-gray-400 mb-3">Cambiá el orden con las flechas o editá el nombre directamente. Al renombrar, se actualiza en todos los productos de ese grupo.</p>
           <div className="space-y-1.5">
-            {catOrder.map((cat, i) => (
-              <div key={cat} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+            {catItems.map((item, i) => (
+              <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
                 <span className="text-xs text-gray-400 w-5">{i + 1}.</span>
-                <span className="text-xs font-medium text-gray-700 flex-1">{cat}</span>
+                <input
+                  value={item.label}
+                  onChange={e => renameCategory(i, e.target.value)}
+                  className="text-xs font-medium text-gray-700 flex-1 bg-white border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#f15922]/30"
+                />
                 <button
                   onClick={() => moveCategory(i, -1)}
                   disabled={i === 0}
-                  className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-500 disabled:opacity-30 flex items-center justify-center"
+                  className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-500 disabled:opacity-30 flex items-center justify-center shrink-0"
                 >↑</button>
                 <button
                   onClick={() => moveCategory(i, 1)}
-                  disabled={i === catOrder.length - 1}
-                  className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-500 disabled:opacity-30 flex items-center justify-center"
+                  disabled={i === catItems.length - 1}
+                  className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-500 disabled:opacity-30 flex items-center justify-center shrink-0"
                 >↓</button>
               </div>
             ))}
@@ -151,7 +175,7 @@ export default function AdminPage() {
             disabled={catSaving}
             className="mt-3 w-full bg-[#f15922] text-white font-semibold py-2.5 rounded-lg text-sm disabled:opacity-60"
           >
-            {catSaving ? 'Guardando...' : 'Guardar orden'}
+            {catSaving ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
 
@@ -228,7 +252,7 @@ export default function AdminPage() {
               <label className="text-xs text-gray-500">Categoría (sección de la landing)</label>
               <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" value={editing.category ?? ''}
                 onChange={e => setEditing({ ...editing, category: e.target.value || null })}>
-                {DEFAULT_CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+                {catItems.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
               </select>
             </div>
             <div>
