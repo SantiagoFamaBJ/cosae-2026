@@ -23,8 +23,8 @@ export type Product = {
 
 export const BRANDS = ['Densell', 'Easydent', 'Coltene', 'GDK', 'Otros'] as const
 
-// Orden de las secciones en la landing, igual al folleto impreso
-export const CATEGORY_ORDER = [
+// Orden por defecto (fallback si todavía no se guardó nada en cosae_settings)
+export const DEFAULT_CATEGORY_ORDER = [
   'Limas mecanizadas',
   'Equipamiento',
   'Línea Coltene',
@@ -36,5 +36,22 @@ export const CATEGORY_ORDER = [
   'Ensanchadores',
   'Otros',
 ]
+
+// Trae el orden de categorías guardado en Supabase (editable desde /admin)
+export async function fetchCategoryOrder(): Promise<string[]> {
+  const { data } = await supabase
+    .from('cosae_settings')
+    .select('value')
+    .eq('key', 'category_order')
+    .maybeSingle()
+  if (data?.value && Array.isArray(data.value)) return data.value as string[]
+  return DEFAULT_CATEGORY_ORDER
+}
+
+export async function saveCategoryOrder(order: string[]) {
+  return supabase
+    .from('cosae_settings')
+    .upsert({ key: 'category_order', value: order })
+}
 
 export const WHATSAPP_NUMBER = '5491164294000'

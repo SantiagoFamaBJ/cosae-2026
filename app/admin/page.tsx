@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, Product, BRANDS, CATEGORY_ORDER } from '@/lib/supabase'
+import { supabase, Product, BRANDS, DEFAULT_CATEGORY_ORDER, fetchCategoryOrder, saveCategoryOrder } from '@/lib/supabase'
 
 const ADMIN_PASSWORD = 'CosaeDM2026'
 
@@ -47,6 +47,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
+  const [catOrder, setCatOrder] = useState<string[]>(DEFAULT_CATEGORY_ORDER)
+  const [catSaving, setCatSaving] = useState(false)
 
   useEffect(() => {
     if (localStorage.getItem('cosae_admin_auth') === 'true') setAuthed(true)
@@ -54,8 +56,27 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (authed) fetchProducts()
+    if (authed) {
+      fetchProducts()
+      fetchCategoryOrder().then(setCatOrder)
+    }
   }, [authed])
+
+  function moveCategory(index: number, dir: -1 | 1) {
+    setCatOrder(prev => {
+      const next = [...prev]
+      const target = index + dir
+      if (target < 0 || target >= next.length) return prev
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  async function persistCategoryOrder() {
+    setCatSaving(true)
+    await saveCategoryOrder(catOrder)
+    setCatSaving(false)
+  }
 
   async function fetchProducts() {
     setLoading(true)
@@ -105,6 +126,35 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-screen-xl mx-auto px-4 py-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+          <h2 className="font-sans font-bold text-gray-800 text-sm mb-3">Orden de los grupos en la landing</h2>
+          <div className="space-y-1.5">
+            {catOrder.map((cat, i) => (
+              <div key={cat} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                <span className="text-xs text-gray-400 w-5">{i + 1}.</span>
+                <span className="text-xs font-medium text-gray-700 flex-1">{cat}</span>
+                <button
+                  onClick={() => moveCategory(i, -1)}
+                  disabled={i === 0}
+                  className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-500 disabled:opacity-30 flex items-center justify-center"
+                >↑</button>
+                <button
+                  onClick={() => moveCategory(i, 1)}
+                  disabled={i === catOrder.length - 1}
+                  className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-500 disabled:opacity-30 flex items-center justify-center"
+                >↓</button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={persistCategoryOrder}
+            disabled={catSaving}
+            className="mt-3 w-full bg-[#f15922] text-white font-semibold py-2.5 rounded-lg text-sm disabled:opacity-60"
+          >
+            {catSaving ? 'Guardando...' : 'Guardar orden'}
+          </button>
+        </div>
+
         <input
           type="text"
           placeholder="Buscar producto..."
@@ -178,7 +228,7 @@ export default function AdminPage() {
               <label className="text-xs text-gray-500">Categoría (sección de la landing)</label>
               <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" value={editing.category ?? ''}
                 onChange={e => setEditing({ ...editing, category: e.target.value || null })}>
-                {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+                {DEFAULT_CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>

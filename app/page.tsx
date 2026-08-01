@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Image from 'next/image'
-import { supabase, Product, WHATSAPP_NUMBER, CATEGORY_ORDER } from '@/lib/supabase'
+import { supabase, Product, WHATSAPP_NUMBER, fetchCategoryOrder, DEFAULT_CATEGORY_ORDER } from '@/lib/supabase'
 
 type CartItem = { product: Product; qty: number }
 
@@ -81,9 +81,11 @@ export default function Home() {
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(DEFAULT_CATEGORY_ORDER)
 
   useEffect(() => {
     fetchProducts()
+    fetchCategoryOrder().then(setCategoryOrder)
   }, [])
 
   async function fetchProducts() {
@@ -108,10 +110,10 @@ export default function Home() {
       if (!map.has(cat)) map.set(cat, [])
       map.get(cat)!.push(p)
     })
-    return CATEGORY_ORDER
+    return categoryOrder
       .filter(cat => map.has(cat))
       .map(cat => ({ category: cat, items: map.get(cat)! }))
-  }, [filtered])
+  }, [filtered, categoryOrder])
 
   function addToCart(product: Product) {
     setCart(prev => {
