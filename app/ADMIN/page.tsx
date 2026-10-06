@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react'
 import { supabase, Product, BRANDS, DEFAULT_CATEGORY_ORDER, fetchCategoryOrder, saveCategoryOrder } from '@/lib/supabase'
 
-const ADMIN_PASSWORD = 'CosaeDM2026'
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [pw, setPw] = useState('')
   const [error, setError] = useState(false)
 
-  function submit() {
-    if (pw === ADMIN_PASSWORD) {
+  async function submit() {
+    if ((await fetch("/api/admin-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) })).ok) {
       localStorage.setItem('cosae_admin_auth', 'true')
       onLogin()
     } else {
